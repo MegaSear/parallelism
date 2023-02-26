@@ -2,7 +2,7 @@
 #include <iostream>
 #include <cmath>
 double PI = 3.141592653589793238462643383279;
-#define time_s std::chrono::steady_clock::now
+using namespace std::chrono;
 
 float calc_sum(float *arr, int size)
 {
@@ -37,28 +37,28 @@ int main()
     for(int i = 0; i < 100; i++) //считаем среднее
     {
 
-    auto start_main = time_s();
+    auto start_main = steady_clock::now();
     int size = 1e7;
     float *arr = new float[size];
 
 #pragma acc enter data create(arr[:size])
 
-    auto start_array = time_s();
+    auto start_array = steady_clock::now();
     calc_array(arr, size);
-    auto end_array = time_s();
+    auto end_array = steady_clock::now();
 
-    auto start_sum = time_s();
+    auto start_sum = steady_clock::now();
     float sum = calc_sum(arr, size);
-    auto end_sum = time_s();
+    auto end_sum = steady_clock::now();
 
 #pragma acc exit data delete(arr[:size])
 
     delete[] arr;
-    auto end_main = time_s();
+    auto end_main = steady_clock::now();
 
-    auto time_main = std::chrono::duration_cast<std::chrono::microseconds>(end_main - start_main).count();
-    auto time_array = std::chrono::duration_cast<std::chrono::microseconds>(end_array - start_array).count();
-    auto time_sum = std::chrono::duration_cast<std::chrono::microseconds>(end_sum - start_sum).count();
+    auto time_main = duration_cast<microseconds>(end_main - start_main).count();
+    auto time_array = duration_cast<microseconds>(end_array - start_array).count();
+    auto time_sum = duration_cast<microseconds>(end_sum - start_sum).count();
 
 
     counter_tsum += time_sum;
