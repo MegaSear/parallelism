@@ -6,11 +6,13 @@
 
 // cublas API error checking
 #define CUBLAS_CHECK(err)                                                                          \
+    {                                                                                              \
         cublasStatus_t err_ = (err);                                                               \
         if (err_ != CUBLAS_STATUS_SUCCESS) {                                                       \
             std::printf("cublas error %d at %s:%d\n", err_, __FILE__, __LINE__);                   \
             throw std::runtime_error("cublas error");                                              \
         }                                                                                          \
+    }                                                                                       \
 
 /*
 define для удобного обращения к одномерному массиву, нужно для более краткой записи кода.
@@ -88,7 +90,7 @@ void algorithm(int size, int epochs, double error_min, bool result)
 
     const double alpha = -1;
     const int inc = 1;
-    int max_idx = 0;
+    int maxim_idx = 0;
 
     init(net_new, num, size);
     init(net_old, num, size);
@@ -125,16 +127,15 @@ void algorithm(int size, int epochs, double error_min, bool result)
             {
                 #pragma acc kernels
                 error = 0;
-                #pragma acc data deviceptr(net_new, net_old)
-                {
-                    CUBLAS_CHECK(cublasDaxpy(handle, size*size, &alpha, net_new, inc, net_old, inc));
-                }
-                CUBLAS_CHECK(cublasIdamax(handle, size*size, net_old, inc, &max_idx));
+
                 #pragma acc data update deviceptr(net_new, net_old)
                 {
+                    CUBLAS_CHECK(cublasDaxpy(handle, size*size, &alpha, net_new, inc, net_old, inc));
+                    CUBLAS_CHECK(cublasIdamax(handle, size*size, net_old, inc, &maxim_idx));
                     #pragma acc kernels
-                    error = fabs(net_old[max_idx - 1]);
+                    error = fabs(net_old[maxim_idx - 1]);
                 }
+
                 /*
                 Одно из условий для завершения расчёта матрицы
                 */
@@ -145,7 +146,7 @@ void algorithm(int size, int epochs, double error_min, bool result)
                 }
                 #pragma acc data deviceptr(net_new, net_old)
                 {
-                CUBLAS_CHECK(cublasDcopy(handle, size*size, net_new, inc, net_old, inc));
+                    CUBLAS_CHECK(cublasDcopy(handle, size*size, net_new, inc, net_old, inc));
                 }
             }
             else
@@ -158,6 +159,7 @@ void algorithm(int size, int epochs, double error_min, bool result)
                 net_old = temp;
             }
         }
+        //#pragma acc wait
     }
     std::cout<< "Epoch: " << epoch << std::endl;
     std::cout << "Error: " << error << std::endl;
