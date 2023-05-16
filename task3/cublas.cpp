@@ -125,6 +125,7 @@ void algorithm(int size, int epochs, double error_min, bool result)
             }
             if(flag)
             {
+                #pragma acc wait
                 #pragma acc kernels
                 error = 0;
 
@@ -144,7 +145,7 @@ void algorithm(int size, int epochs, double error_min, bool result)
                 {
                     break;
                 }
-                #pragma acc data deviceptr(net_new, net_old)
+                #pragma acc data deviceptr(net_new, net_old) async
                 {
                     CUBLAS_CHECK(cublasDcopy(handle, size*size, net_new, inc, net_old, inc));
                 }
@@ -158,8 +159,8 @@ void algorithm(int size, int epochs, double error_min, bool result)
                 net_new = net_old;
                 net_old = temp;
             }
-            #pragma acc wait
         }
+        #pragma acc wait
     }
     std::cout<< "Epoch: " << epoch << std::endl;
     std::cout << "Error: " << error << std::endl;
