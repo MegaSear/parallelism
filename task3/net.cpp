@@ -196,7 +196,7 @@ int get_free_device()
         int usage = atoi(strtok(buffer, "%"));
         std::cout << "\tDevice: " << i-1 << "\tUsing: " << usage << "%" << std::endl;
 
-        if (usage < min_usage) 
+        if (usage <= min_usage) 
         {
             min_usage = int(usage);
             device = i-1;
@@ -217,7 +217,7 @@ Main функция, здесь происходит: 1. Подсчёт врем
 int main(int argc, char* argv[])
 {
     /*
-    Выбор либо свободного ускорителя, либо последнего.
+    Выбор либо свободного ускорителя.
     */
     
     int device = get_free_device();
