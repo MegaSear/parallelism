@@ -171,7 +171,42 @@ void algorithm(int size, int epochs, double error_min, bool result)
     acc_free(net_old);
 }
 
+int get_free_device()
+{
+    FILE *fp;
+    int MAX_LINE_LENGTH = 1024;
+    char buffer[MAX_LINE_LENGTH];
+    float min_usage = 100.0;
+    int device = 0;
+    fp = popen("nvidia-smi --query-gpu=utilization.gpu --format=csv", "r");
 
+    if (fp == NULL) 
+    {
+        std::cout << "Failed to execute command" << std::endl;
+        exit(1);
+    }
+
+    std::cout << "Device list and using:" << std::endl;
+    for(int i = 0; fgets(buffer, MAX_LINE_LENGTH, fp) != NULL; i++)
+    {
+        if (i < 1)
+        {
+            continue;
+        }
+        int usage = atoi(strtok(buffer, "%"));
+        std::cout << "\tDevice: " << i-1 << "\tUsing: " << usage << "%" << std::endl;
+
+        if (usage < min_usage) 
+        {
+            min_usage = int(usage);
+            device = i-1;
+        }
+    }
+
+    std::cout<< "Free device: " << device << std::endl;
+    std::cout<< "Minimum usage: " << min_usage << "%" << std::endl;
+    return device;
+}
 /*
 Main функция, здесь происходит: 1. Подсчёт времени выполнения алгоритма
                                 2. Определяется ускоритель 
@@ -184,8 +219,10 @@ int main(int argc, char* argv[])
     /*
     Выбор либо свободного ускорителя, либо последнего.
     */
-    acc_set_device_num(1, acc_device_default);
-
+    
+    int device = get_free_device();
+    acc_set_device_num(device, acc_device_default);
+    
 
     /*
     Объявление основых констант, таких как:
