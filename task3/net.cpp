@@ -6,13 +6,11 @@
 
 // cublas API error checking
 #define CUBLAS_CHECK(err)                                                                          \
-    do {                                                                                           \
         cublasStatus_t err_ = (err);                                                               \
         if (err_ != CUBLAS_STATUS_SUCCESS) {                                                       \
             std::printf("cublas error %d at %s:%d\n", err_, __FILE__, __LINE__);                   \
             throw std::runtime_error("cublas error");                                              \
         }                                                                                          \
-    } while (0)
 
 /*
 define для удобного обращения к одномерному массиву, нужно для более краткой записи кода.
@@ -82,9 +80,6 @@ void print(double* net, int size)
 */
 void algorithm(int size, int epochs, double error_min, bool result)
 {
-    #ifdef _NVTX
-        nvtxRangePush("Initialization");
-    #endif
     double num = 0;
     double* net_new;
     double* net_old;
@@ -97,10 +92,6 @@ void algorithm(int size, int epochs, double error_min, bool result)
 
     init(net_new, num, size);
     init(net_old, num, size);
-
-    #ifdef _NVTX
-        nvtxRangePop();
-    #endif
 
     double error = error_min + 1;
     int epoch  = 0;
