@@ -4,7 +4,9 @@
 #include <openacc.h>
 #include <cublas_v2.h>
 
-// cublas API error checking
+/* 
+    проверка cublas error
+*/
 #define CUBLAS_CHECK(err)                                                                          \
     {                                                                                              \
         cublasStatus_t err_ = (err);                                                               \
@@ -12,38 +14,41 @@
             std::printf("cublas error %d at %s:%d\n", err_, __FILE__, __LINE__);                   \
             throw std::runtime_error("cublas error");                                              \
         }                                                                                          \
-    }                                                                                       \
+    }                                                                                              \
 
 /*
-define для удобного обращения к одномерному массиву, нужно для более краткой записи кода.
+    define для удобного обращения к одномерному массиву, нужно для более краткой записи кода.
 */
 #define IDX2C(i, j, ld) (((j)*(ld))+(i))
 
 
 /*
-Функция инициализации матриц
+    Функция инициализации матриц
 */
 void init(double* net, double num, int size)
 {
+
     /*
-    Заполнение матрциы некоторым числом (например нулём, но в лучшем случае 
-    код будет испольняться быстрее, если заполнить средним арифметическим чисел углов сетки).
-    Двойной цикл является независимым по итерациям.
+        Заполнение матрциы некоторым числом (например нулём, но в лучшем случае 
+        код будет испольняться быстрее, если заполнить средним арифметическим чисел углов сетки).
+        Двойной цикл является независимым по итерациям.
     */
     #pragma acc kernels deviceptr(net)
     memset(net, num, size*size);
+
     /*
-    Заполнение угловых значений матрицы
+        Заполнение угловых значений матрицы
     */
     #pragma acc parallel deviceptr(net)
     {
-    net[IDX2C(0, 0, size)] = 10;
-    net[IDX2C(0, size - 1, size)] = 20;
-    net[IDX2C(size - 1, 0, size)] = 20;
-    net[IDX2C(size - 1, size - 1, size)] = 30;
+        net[IDX2C(0, 0, size)] = 10;
+        net[IDX2C(0, size - 1, size)] = 20;
+        net[IDX2C(size - 1, 0, size)] = 20;
+        net[IDX2C(size - 1, size - 1, size)] = 30;
     }
+
     /*
-    Заполнение боковых значений матрицы. Расчёт значений производится таким образом, чтобы итерации были независмыми
+        Заполнение боковых значений матрицы. Расчёт значений производится таким образом, чтобы итерации были независмыми
     */
     #pragma acc parallel loop independent deviceptr(net)
     for (size_t i = 1; i < size - 1; i++)
@@ -57,7 +62,7 @@ void init(double* net, double num, int size)
 
 
 /*
-Функция вывода матрицы (находящейся в памяти ускорителя), для удобства.
+    Функция вывода матрицы (находящейся в памяти ускорителя), для удобства.
 */
 void print(double* net, int size)
 {
@@ -74,11 +79,11 @@ void print(double* net, int size)
 
 
 /*
-Основная функция для подсчёта матрицы. 
-Здесь просиходит: 1. Инициализация матриц. 
-                  2. Подсчёт более приближённой к ответу матрицы.
-                  3. Расчёт ошибки из старой матрицы и новой, ошибка уменьшается в процессе, так как алгоритм сходится.
-Алгоритм работает, пока ошибка больше той, которая необходима. Также пристутсвует ограничение по количеству итераций.
+    Основная функция для подсчёта матрицы. 
+    Здесь просиходит: 1. Инициализация матриц. 
+                      2. Подсчёт более приближённой к ответу матрицы.
+                      3. Расчёт ошибки из старой матрицы и новой, ошибка уменьшается в процессе, так как алгоритм сходится.
+    Алгоритм работает, пока ошибка больше той, которая необходима. Также пристутсвует ограничение по количеству итераций.
 */
 void algorithm(int size, int epochs, double error_min, bool result)
 {
@@ -107,8 +112,8 @@ void algorithm(int size, int epochs, double error_min, bool result)
         for (; epoch < epochs; epoch++)
         {
             /*
-            Подсчёт ошибки происходит не каждую итерацию, а один раз за количество итераций равному размеру матрицы.
-            size больше => Считаем ошибку реже.
+                Подсчёт ошибки происходит не каждую итерацию, а один раз за количество итераций равному размеру матрицы.
+                size больше => Считаем ошибку реже.
             */
             flag = !(epoch%size);
             #pragma acc parallel loop independent collapse(2) deviceptr(net_old, net_new) async
@@ -117,20 +122,26 @@ void algorithm(int size, int epochs, double error_min, bool result)
                 for (size_t i = 1; i < size - 1; i++)
                 {
                     /*
-                    Подсчёт новой матрицы на основе старой по пятиточечному шаблону.
+                        Подсчёт новой матрицы на основе старой по пятиточечному шаблону.
                     */
                     net_new[IDX2C(i, j, size)] = 0.25 * (net_old[IDX2C(i + 1, j, size)] + net_old[IDX2C(i - 1, j, size)] +
                                                         net_old[IDX2C(i, j - 1, size)] + net_old[IDX2C(i, j + 1, size)]);
                 }
             }
+
             if(flag)
             {
                 #pragma acc wait
                 #pragma acc kernels
                 error = 0;
 
-                #pragma acc data update deviceptr(net_new, net_old) async
+                #pragma acc data update deviceptr(net_new, net_old)
                 {
+                    /*
+                        net_old = -1*net_new * net_old
+                        maxim_idx = index : abs(net_old[index]) = max(abs(net_old))
+                        Нумерация массива на Fortran начинается с 1
+                    */
                     CUBLAS_CHECK(cublasDaxpy(handle, size*size, &alpha, net_new, inc, net_old, inc));
                     CUBLAS_CHECK(cublasIdamax(handle, size*size, net_old, inc, &maxim_idx));
                     #pragma acc kernels
@@ -138,22 +149,26 @@ void algorithm(int size, int epochs, double error_min, bool result)
                 }
 
                 /*
-                Одно из условий для завершения расчёта матрицы
+                    Одно из условий для завершения расчёта матрицы
                 */
                 #pragma acc update host(error)
                 if(error <= error_min)
                 {
                     break;
                 }
-                #pragma acc data deviceptr(net_new, net_old) async
+                #pragma acc data deviceptr(net_new, net_old)
                 {
+                    /*
+                        net_old = net_new. Swap и не нужен, 
+                        необходима только матрица на основе которой будет высчитываться новая)
+                    */
                     CUBLAS_CHECK(cublasDcopy(handle, size*size, net_new, inc, net_old, inc));
                 }
             }
             else
             { 
                 /*
-                Swap указателей быстрее, чем swap значений матрицы.
+                    Swap указателей быстрее, чем swap значений матрицы.
                 */
                 double* temp = net_new;
                 net_new = net_old;
@@ -215,18 +230,18 @@ int get_free_device()
 }
 
 /*
-Main функция, здесь происходит: 1. Подсчёт времени выполнения алгоритма
-                                2. Определяется ускоритель 
-                                3. Парсер аргументов
-                                3. Вызывается функция для расчёта матрицы
-                                4. Красивый вывод параметров
+    Main функция, здесь происходит: 1. Подсчёт времени выполнения алгоритма
+                                    2. Определяется ускоритель 
+                                    3. Парсер аргументов
+                                    3. Вызывается функция для расчёта матрицы
+                                    4. Красивый вывод параметров
 */
 int main(int argc, char* argv[])
 {
 
     /*
-    Объявление основых констант, таких как:
-    размер матрицы, точность алгоритма а также макисмально допустимого количества итераций
+        Объявление основых констант, таких как:
+        размер матрицы, точность алгоритма а также макисмально допустимого количества итераций
     */
     double accuracy = 1e-6;
     int max_iteration = (int)1e6;
@@ -234,7 +249,7 @@ int main(int argc, char* argv[])
     bool result = false;
 
     /*
-    Парсер аргументов
+        Парсер аргументов
     */
     for (int arg = 1; arg < argc; arg++)
     {
@@ -256,7 +271,7 @@ int main(int argc, char* argv[])
     std::cout << "--------------------------------" <<std::endl;
 
     /*
-    Выбор либо свободного ускорителя.
+        Выбор либо свободного ускорителя.
     */
     
     int device = get_free_device();
@@ -269,7 +284,7 @@ int main(int argc, char* argv[])
     std::cout << "\tAccuracy: " << accuracy << std::endl;
 
     /*
-    Вызов функции подсчёта матрицы а также подсчёт времени этого алгоритма.
+        Вызов функции подсчёта матрицы а также подсчёт времени этого алгоритма.
     */
     auto begin_main = std::chrono::steady_clock::now();
     algorithm(length_grid, max_iteration, accuracy, result);
