@@ -111,7 +111,7 @@ void algorithm(int size, int epochs, double error_min, bool result)
             size больше => Считаем ошибку реже.
             */
             flag = !(epoch%size);
-            #pragma acc parallel loop independent collapse(2) deviceptr(net_old, net_new)
+            #pragma acc parallel loop independent collapse(2) deviceptr(net_old, net_new) async
             for (size_t j = 1; j < size - 1; j++)
             {
                 for (size_t i = 1; i < size - 1; i++)
@@ -128,7 +128,7 @@ void algorithm(int size, int epochs, double error_min, bool result)
                 #pragma acc kernels
                 error = 0;
 
-                #pragma acc data update deviceptr(net_new, net_old)
+                #pragma acc data update deviceptr(net_new, net_old) async
                 {
                     CUBLAS_CHECK(cublasDaxpy(handle, size*size, &alpha, net_new, inc, net_old, inc));
                     CUBLAS_CHECK(cublasIdamax(handle, size*size, net_old, inc, &maxim_idx));
@@ -158,8 +158,8 @@ void algorithm(int size, int epochs, double error_min, bool result)
                 net_new = net_old;
                 net_old = temp;
             }
+            #pragma acc wait
         }
-        //#pragma acc wait
     }
     std::cout<< "Epoch: " << epoch << std::endl;
     std::cout << "Error: " << error << std::endl;
