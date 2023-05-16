@@ -171,6 +171,10 @@ void algorithm(int size, int epochs, double error_min, bool result)
     acc_free(net_old);
 }
 
+
+/*
+    Функция поиска свободного устройства. Получает результат команды nvidia-smi и выбирает менее загруженный ускоритель
+*/
 int get_free_device()
 {
     FILE *fp;
@@ -186,7 +190,7 @@ int get_free_device()
         exit(1);
     }
 
-    std::cout << "Device list and using:" << std::endl;
+    std::cout << "List of devices and using:" << std::endl;
     for(int i = 0; fgets(buffer, MAX_LINE_LENGTH, fp) != NULL; i++)
     {
         if (i < 1)
@@ -203,10 +207,10 @@ int get_free_device()
         }
     }
 
-    std::cout<< "Free device: " << device << std::endl;
-    std::cout<< "Minimum usage: " << min_usage << "%" << std::endl;
+    std::cout<< "\nSelected device:" << "\tDevice: " << device << "\tMinimum Using: " << min_usage << "%" << std::endl << std::endl;
     return device;
 }
+
 /*
 Main функция, здесь происходит: 1. Подсчёт времени выполнения алгоритма
                                 2. Определяется ускоритель 
@@ -216,13 +220,6 @@ Main функция, здесь происходит: 1. Подсчёт врем
 */
 int main(int argc, char* argv[])
 {
-    /*
-    Выбор либо свободного ускорителя.
-    */
-    
-    int device = get_free_device();
-    acc_set_device_num(device, acc_device_default);
-    
 
     /*
     Объявление основых констант, таких как:
@@ -254,6 +251,14 @@ int main(int argc, char* argv[])
         }
     }
     std::cout << "--------------------------------" <<std::endl;
+
+    /*
+    Выбор либо свободного ускорителя.
+    */
+    
+    int device = get_free_device();
+    acc_set_device_num(device, acc_device_default);
+    
     std::cout << "---PROGRAMM START---" << std::endl;
     std::cout << "Current options:" << std::endl;
     std::cout << "\tSize network: " << length_grid << std::endl;
