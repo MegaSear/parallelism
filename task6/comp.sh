@@ -1,0 +1,2 @@
+nvc++ NN.cu -I /opt/nvidia/hpc_sdk/Linux_x86_64/22.11/math_libs/11.0/targets/x86_64-linux/include/ -L /opt/nvidia/hpc_sdk/Linux_x86_64/22.11/math_libs/11.0/targets/x86_64-linux/lib/ -lcublas -o script
+./script
