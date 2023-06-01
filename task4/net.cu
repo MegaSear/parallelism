@@ -181,8 +181,8 @@ void algorithm(const int net_size = 128, const int iter_max = 1e6, const double 
     int iter = 0;
 
     // Вывод
-    // if (res)
-    //    print(A, net_size);
+    if (res)
+        print(A, net_size);
 
     // Начать отсчет времени работы
     auto begin_main = std::chrono::steady_clock::now();
@@ -201,11 +201,11 @@ void algorithm(const int net_size = 128, const int iter_max = 1e6, const double 
     std::cout<< "Epoch: " << iter << std::endl;
     std::cout << "Error: " << *error << std::endl;
     // Вывод
-    //if (res)
-    //{
-    //    CUDA_CHECK(cudaMemcpyAsync(A, A_dev, sizeof(double) * vec_size, cudaMemcpyDeviceToHost, memory_stream));
-    //    print(A, net_size);
-    //}
+    if (res)
+    {
+        CUDA_CHECK(cudaMemcpyAsync(A, A_dev, sizeof(double) * vec_size, cudaMemcpyDeviceToHost, memory_stream));
+        print(A, net_size);
+    }
 
     // Освобождение памяти
     CUDA_CHECK(cudaFree(reduction_bufer));
@@ -278,7 +278,7 @@ int main(int argc, char* argv[])
     double accuracy = 1e-6;
     int max_iteration = (int)1e6;
     int length_grid = 1024;
-    bool result = false;
+    bool result = true;
 
     /*
         Парсер аргументов
